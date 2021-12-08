@@ -3,7 +3,7 @@
 #
 # This script expects a data folder containing raw site visit folders.  It then
 # selects only data files (not config, etc), imports them, and cleans them up a bit.
-# Finally, it expors a csv per basin.
+# Finally, it exports a csv per basin.
 
 
 library(tidyverse)
@@ -11,7 +11,7 @@ library(lubridate)
 library(here)
 
 # Set relative location of this file
-here::i_am("scripts/1_clean_raw_data.R")
+here::i_am("R/1_clean_raw_data.R")
 
 # Location of raw H2 download folders
 fileLocation <- here("input_data")
