@@ -1,0 +1,401 @@
+---
+# Title is created dynamically below by using names of basins from data.
+output:
+  html_document:
+    df_print: paged
+---
+<!-- Forces left justification. Otherwise, there is huge padded whitespace to left of extra wide plots -->
+<style>
+.main-container {
+    max-width: 940px;
+    margin-left: 0;
+    margin-right: auto;
+}
+</style>
+
+
+```{r, startup, echo = FALSE, include = TRUE, warning = FALSE, message = FALSE, code_folding = TRUE}
+# Load libraries and import data.
+library(tidyverse)
+library(plotly)
+library(here)
+library(glue)
+
+#Set relative location of this file.
+here::i_am("R/2_flume_QA_plots.Rmd")
+
+# Set location of data files.  This should be the both basins in the pair.
+file1Loc <- "cleaned_data/fe_WY-2021.csv"
+file2Loc <- "cleaned_data/fw_WY-2021.csv"
+
+var1 <- "Stage"
+var2 <- "WTmn"
+
+# Read in data
+dat <- read_csv(here(file1Loc), 
+    col_types = cols(DateTimePST = col_datetime(format = "%Y-%m-%d %H:%M:%S"), 
+        Stage = col_double(), WT = col_double(), QA_Stage = col_character()))
+
+dat2 <- read_csv(here(file2Loc), 
+    col_types = cols(DateTimePST = col_datetime(format = "%Y-%m-%d %H:%M:%S"), 
+        Stage = col_double(), WT = col_double(), QA_Stage = col_character()))
+
+datc <- bind_rows(dat, dat2)
+
+# Pull two letter basin name from data files.
+basin1 <- datc %>% filter(basin == unique(.$basin)[1])
+basin2 <- datc %>% filter(basin == unique(.$basin)[2])
+
+```
+
+---
+title: "Flume QAQC Plots - `r paste(unique(basin1$basin), "&", unique(basin2$basin), sep = " ")`"
+---
+
+```{r Plot 1 - Basin 1 with both variables, , echo = FALSE, include = TRUE, warning = FALSE, message = FALSE, code_folding = TRUE}
+
+
+#### Create custom ranges ---------------------------------------------------------------
+# This creates the values needed to force Plotly to plot both y-axes with y = 0 aligned.
+# Here, 2 data inputs (var1 and var2) are accounted for.
+
+# Buffer to add some visual space on the extreme ends of the data values
+axisBuffer <- 1.1
+
+# Create custom ranges
+y1Range <- max(basin1[var1], na.rm = TRUE) - min(basin1[var1], na.rm = TRUE)
+y2Range <- max(basin1[var2], na.rm = TRUE) - min(basin1[var2], na.rm = TRUE)
+
+higherRangeVal <- max(c(y1Range, y2Range))
+
+y1coeff <- higherRangeVal / y1Range
+y2coeff <- higherRangeVal / y2Range
+
+y1SynthRange <- y1coeff * c(min(basin1[var1], na.rm = TRUE), max(basin1[var1], na.rm = TRUE))
+y2SynthRange <- y2coeff * c(min(basin1[var2], na.rm = TRUE), max(basin1[var2], na.rm = TRUE))
+
+synthRanges <- c(y1SynthRange, y2SynthRange)
+
+commonRange <- c(min(synthRanges), max(synthRanges))
+
+
+# Plotly setup -------------------------------------------------------------------------
+
+# X-axis
+xAxis <- list(
+  title = "DateTime (PST)",
+  tickangle = 0,
+  tickfont = list(size = 10),
+  automargin = TRUE
+)
+
+# y-axis 1
+yAxis <- list(
+  side = "left",
+  showgrid = TRUE,
+  zeroline = TRUE,
+  title = var1,
+  automargin = TRUE,
+  range = (commonRange / y1coeff) * axisBuffer
+)
+
+# y-axis 2
+yAxis2 <- list(
+  side = "right",
+  autotick = TRUE,
+  ticks = "outside",
+  tick0 = 0,
+  showgrid = FALSE,
+  zeroline = TRUE,
+  overlaying = "y",
+  title = var2,
+  automargin = TRUE,
+  range = (commonRange / y2coeff) * axisBuffer
+)
+
+# Setting up the plotted variables and layout
+plot_ly(width = 1600,     
+        height = 800) %>%
+  ## Basin 1
+  # y1 (Basin 1, var 1) - The silly y = ... expression is used to pass the text variables set above to plotly.  There must be a better way.
+  add_trace(data = basin1,
+            x = ~DateTimePST,
+            y = ~eval(parse(text = var1)),
+            name = paste(var1, "-", unique(basin1$basin, sep = " ")),
+            type = "scattergl", 
+            mode = "lines+markers",
+            marker = list(size = 4),
+            line = list(width = 2),
+            opacity = 0.8,
+            yaxis = "y", 
+            textposition = "auto"
+            ) %>%
+  # y2 (Basin 1, var 2)
+  add_trace(data = basin1,
+            x = ~DateTimePST,
+            y = ~eval(parse(text = var2)),
+            name = paste(var2, "-", unique(basin1$basin, sep = " ")),
+            type = "scattergl",
+            mode = "lines+markers",
+            marker = list(size = 4),
+            line = list(width = 2),
+            opacity = 0.8,
+            yaxis = "y2"
+            ) %>%
+  layout(
+    #margin = list(r=50, b = 150),
+    title = list(text = paste(unique(basin1$basin), "-", var1, "&", var2, sep = " "),
+                 y = .99),
+    xaxis = xAxis,
+    yaxis = yAxis,
+    yaxis2 = yAxis2,
+    showlegend = TRUE,
+    legend = list(x = 1.05, y = 1)
+  )
+
+```
+
+```{r Plot 2 - Basin 2 with both variables, , echo = FALSE, include = TRUE, warning = FALSE, message = FALSE, code_folding = TRUE}
+
+
+#### Create custom ranges ---------------------------------------------------------------
+# This creates the values needed to force Plotly to plot both y-axes with y = 0 aligned.
+# Here, 2 data inputs (var1 and var2 are accounted for.
+
+# Buffer to add some visual space on the extreme ends of the data values
+axisBuffer <- 1.1
+
+# Create custom ranges
+y1Range <- max(basin2[var1], na.rm = TRUE) - min(basin2[var1], na.rm = TRUE)
+y2Range <- max(basin2[var2], na.rm = TRUE) - min(basin2[var2], na.rm = TRUE)
+
+higherRangeVal <- max(c(y1Range, y2Range))
+
+y1coeff <- higherRangeVal / y1Range
+y2coeff <- higherRangeVal / y2Range
+
+y1SynthRange <- y1coeff * c(min(basin2[var1], na.rm = TRUE), max(basin2[var1], na.rm = TRUE))
+y2SynthRange <- y2coeff * c(min(basin2[var2], na.rm = TRUE), max(basin2[var2], na.rm = TRUE))
+
+synthRanges <- c(y1SynthRange, y2SynthRange)
+
+commonRange <- c(min(synthRanges), max(synthRanges))
+
+
+# Plotly setup -------------------------------------------------------------------------
+
+# X-axis
+xAxis <- list(
+  title = "DateTime (PST)",
+  tickangle = 0,
+  tickfont = list(size = 10),
+  automargin = TRUE
+)
+
+# y-axis 1
+yAxis <- list(
+  side = "left",
+  showgrid = TRUE,
+  zeroline = TRUE,
+  title = var1,
+  automargin = TRUE,
+  range = (commonRange / y1coeff) * axisBuffer
+)
+
+# y-axis 2
+yAxis2 <- list(
+  side = "right",
+  autotick = TRUE,
+  ticks = "outside",
+  tick0 = 0,
+  showgrid = FALSE,
+  zeroline = TRUE,
+  overlaying = "y",
+  title = var2,
+  automargin = TRUE,
+  range = (commonRange / y2coeff) * axisBuffer
+)
+
+# Setting up the plotted variables and layout
+plot_ly(width = 1600,     
+        height = 800) %>%
+  ## Basin 1
+  # y1 (Basin 1, var 1) - The silly y = ... expression is used to pass the text variables set above to plotly.  There must be a better way.
+  add_trace(data = basin2,
+            x = ~DateTimePST,
+            y = ~eval(parse(text = var1)),
+            name = paste(var1, "-", unique(basin2$basin, sep = " ")),
+            type = "scattergl", 
+            mode = "lines+markers",
+            marker = list(size = 4),
+            line = list(width = 2),
+            opacity = 0.8,
+            yaxis = "y", 
+            textposition = "auto"
+            ) %>%
+  # y2 (Basin 1, var 2)
+  add_trace(data = basin2,
+            x = ~DateTimePST,
+            y = ~eval(parse(text = var2)),
+            name = paste(var2, "-", unique(basin2$basin, sep = " ")),
+            type = "scattergl",
+            mode = "lines+markers",
+            marker = list(size = 4),
+            line = list(width = 2),
+            opacity = 0.8,
+            yaxis = "y2"
+            ) %>%
+  layout(
+    #margin = list(r=50, b = 150),
+    title = list(text = paste(unique(basin2$basin), "-", var1, "&", var2, sep = " "),
+                 y = .99),
+    xaxis = xAxis,
+    yaxis = yAxis,
+    yaxis2 = yAxis2,
+    showlegend = TRUE,
+    legend = list(x = 1.05, y = 1)
+  )
+
+```
+
+```{r Plot 3 - Both Basins Both Variables, , echo = FALSE, include = TRUE, warning = FALSE, message = FALSE, code_folding = TRUE}
+
+#### Create custom ranges ---------------------------------------------------------------
+# This creates the values needed to force Plotly to plot both y-axes with y = 0 aligned.
+# Here, all 4 data inputs (var1 and var2 from both Basin1 and Basin2) are accounted for.
+
+# Buffer to add some visual space on the extreme ends of the data values
+axisBuffer <- 1.1
+
+y1Range <- max(basin1[var1], na.rm = TRUE) - min(basin1[var1], na.rm = TRUE)
+y2Range <- max(basin1[var2], na.rm = TRUE) - min(basin1[var2], na.rm = TRUE)
+
+y3Range <- max(basin2[var1], na.rm = TRUE) - min(basin2[var1], na.rm = TRUE)
+y4Range <- max(basin2[var2], na.rm = TRUE) - min(basin2[var2], na.rm = TRUE)
+
+higherRangeVal <- max(c(y1Range, y2Range, y3Range, y4Range))
+
+y1coeff <- higherRangeVal / y1Range
+y2coeff <- higherRangeVal / y2Range
+y3coeff <- higherRangeVal / y3Range
+y4coeff <- higherRangeVal / y4Range
+
+y1SynthRange <- y1coeff * c(min(basin1[var1], na.rm = TRUE), max(basin1[var1], na.rm = TRUE))
+y2SynthRange <- y2coeff * c(min(basin1[var2], na.rm = TRUE), max(basin1[var2], na.rm = TRUE))
+y3SynthRange <- y3coeff * c(min(basin2[var1], na.rm = TRUE), max(basin2[var1], na.rm = TRUE))
+y4SynthRange <- y4coeff * c(min(basin2[var2], na.rm = TRUE), max(basin2[var2], na.rm = TRUE))
+
+synthRanges <- c(y1SynthRange, y2SynthRange, y2SynthRange, y4SynthRange)
+
+commonRange <- c(min(synthRanges), max(synthRanges))
+
+
+# Plotly setup -------------------------------------------------------------------------
+
+# X-axis
+xAxis <- list(
+  title = "DateTime (PST)",
+  tickangle = 0,
+  tickfont = list(size = 10),
+  automargin = TRUE
+)
+
+# y-axis 1
+yAxis <- list(
+  side = "left",
+  showgrid = TRUE,
+  zeroline = TRUE,
+  title = var1,
+  automargin = TRUE,
+  range = (commonRange / y1coeff) * axisBuffer
+)
+
+# y-axis 2
+yAxis2 <- list(
+  side = "right",
+  autotick = TRUE,
+  ticks = "outside",
+  tick0 = 0,
+  showgrid = FALSE,
+  zeroline = TRUE,
+  overlaying = "y",
+  title = var2,
+  automargin = TRUE,
+  range = (commonRange / y2coeff) * axisBuffer
+)
+
+# Setting up the plotted variables and layout
+plot_ly(width = 1600,     
+        height = 800) %>%
+  ## Basin 1
+  # y1 (Basin 1, var 1) - The silly y = ... expression is used to pass the text variables set above to plotly.  There must be a better way.
+  add_trace(data = basin1,
+            x = ~DateTimePST,
+            y = ~eval(parse(text = var1)),
+            name = paste(var1, "-", unique(basin1$basin, sep = " ")),
+            type = "scattergl", 
+            mode = "lines+markers",
+            marker = list(color = '#ff3d1f',
+                          size = 4),
+            line = list(color = '#ff3d1f',
+                        width = 2),
+            opacity = 0.8,
+            yaxis = "y", 
+            textposition = "auto"
+            ) %>%
+  # y2 (Basin 1, var 2)
+  add_trace(data = basin1,
+            x = ~DateTimePST,
+            y = ~eval(parse(text = var2)),
+            name = paste(var2, "-", unique(basin1$basin, sep = " ")),
+            type = "scattergl",
+            mode = "lines+markers",
+            marker = list(color = '#ffac9a',
+                          size = 4),
+            line = list(color = '#ffac9a',
+                        width = 2),
+            opacity = 0.8,
+            yaxis = "y2"
+            ) %>%
+  # y3 (Basin 2, var 1)
+  add_trace(data = basin2,
+            x = ~DateTimePST,
+            y = ~eval(parse(text = var1)),
+            name = paste(var1, "-", unique(basin2$basin, sep = " ")),
+            type = "scattergl",
+            mode = "lines+markers",
+            marker = list(color = '##ff3d1f',
+                          size = 4),
+            line = list(color = '#00429d',
+                        width = 2),
+            opacity = 0.8,
+            yaxis = "y1"
+            ) %>%
+  # y4 (Basin 2, var 2)
+  add_trace(data = basin2,
+            x = ~DateTimePST,
+            y = ~eval(parse(text = var2)),
+            name = paste(var2, "-", unique(basin2$basin, sep = " ")),
+            type = "scattergl",
+            mode = "lines+markers",
+            marker = list(color = '#73a2c6',
+                          size = 4),
+            line = list(color = '#73a2c6',
+                        width = 2),
+            opacity = 0.8,
+            yaxis = "y2"
+            ) %>%
+  layout(
+    #margin = list(r=50, b = 150),
+    title = list(text = paste(unique(basin1$basin), "&", unique(basin2$basin), "-", var1, "&", var2, sep = " "),
+                 y = .99),
+    xaxis = xAxis,
+    yaxis = yAxis,
+    yaxis2 = yAxis2,
+    showlegend = TRUE,
+    legend = list(x = 1.05, y = 1)
+  )
+
+```
+
+
