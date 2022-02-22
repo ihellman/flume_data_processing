@@ -6,4 +6,6 @@ This repository contains scripts for combining and organizing raw data to point 
 
 2\) 2_flume_QAQC_plots.Rmd - Creates a html file with plots showing stage and turbidity for a defined basin pair.
 
-3\) 3_anatek_report_merger.R - Takes Anatek's Excel-based reports and merges them into a single file.
+3\) 3_QA_flagger.R - Takes the date ranges in the QA form and applies the flag to the respective date ranges in the actual data file.
+
+3\) 4_anatek_report_merger.R - Takes Anatek's Excel-based reports and merges them into a single file.

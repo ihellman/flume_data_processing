@@ -8,7 +8,7 @@ library(here)
 library(readxl)
 
 # Set where this script is located.
-here::i_am("scripts/anatek_report_merge.Rmd")
+here::i_am("R/4_anatek_report_merger.R")
 
 # Read in file names of all reports in the data folder.
 files <- list.files(here("data"), full.names = TRUE) 
